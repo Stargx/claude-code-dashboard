@@ -262,13 +262,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/api/open-folder', express.json(), (req, res) => {
   const folder = req.body.path;
-  if (!folder) return res.status(400).json({ error: 'No path' });
-  const fs2 = require('fs');
-  if (!fs2.existsSync(folder)) return res.status(404).json({ error: 'Folder not found' });
+  if (!folder || typeof folder !== 'string') return res.status(400).json({ error: 'No path' });
+  if (!fs.existsSync(folder)) return res.status(404).json({ error: 'Folder not found' });
+  const { execFile } = require('child_process');
   const plat = process.platform;
-  const cmd = plat === 'win32' ? `explorer "${folder.replace(/\//g, '\\')}"` :
-              plat === 'darwin' ? `open "${folder}"` : `xdg-open "${folder}"`;
-  require('child_process').exec(cmd, () => {});
+  if (plat === 'win32') {
+    execFile('explorer', [folder.replace(/\//g, '\\')], () => {});
+  } else if (plat === 'darwin') {
+    execFile('open', [folder], () => {});
+  } else {
+    execFile('xdg-open', [folder], () => {});
+  }
   res.json({ ok: true });
 });
 
