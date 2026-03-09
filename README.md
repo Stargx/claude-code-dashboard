@@ -2,7 +2,7 @@
 
 A lightweight localhost dashboard that monitors multiple Claude Code sessions in real-time. See token usage, costs, active tools, subagents, and session status across all your terminal instances at a glance.
 
-![Dark terminal aesthetic with session cards showing status, costs, and activity](https://img.shields.io/badge/status-beta-yellow)
+![Claude Code Dashboard screenshot](screenshot.png)
 
 ## Why?
 
