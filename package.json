@@ -1,0 +1,23 @@
+{
+  "name": "claude-code-dashboard",
+  "version": "1.0.0",
+  "description": "A localhost dashboard that monitors multiple Claude Code sessions in real-time. See token usage, costs, active tools, and session status across all your terminal instances.",
+  "main": "watcher.js",
+  "scripts": {
+    "start": "node watcher.js"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "dashboard",
+    "developer-tools",
+    "session-monitor"
+  ],
+  "author": "Cold Beam Games",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "chokidar": "^5.0.0",
+    "express": "^5.2.1"
+  }
+}

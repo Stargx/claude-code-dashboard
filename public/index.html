@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0e14;
+      --bg-card: #111820;
+      --bg-card-hover: #161d27;
+      --border: #1e2a3a;
+      --text: #c5cdd8;
+      --text-dim: #5c6a7a;
+      --text-bright: #e8edf3;
+      --green: #00ff88;
+      --yellow: #ffcc00;
+      --red: #ff4444;
+      --grey: #555;
+      --blue: #4dabf7;
+      --bar-bg: #1a2332;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'IBM Plex Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    #root { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+    /* --- Header --- */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-title .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .header-stats {
+      display: flex;
+      gap: 24px;
+      font-size: 13px;
+    }
+    .stat-label { color: var(--text-dim); margin-right: 6px; }
+    .stat-value { color: var(--text-bright); font-weight: 500; }
+    .stat-value.cost { color: var(--green); }
+
+    /* --- Grid --- */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 16px;
+    }
+
+    /* --- Session Card --- */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .card:hover { background: var(--bg-card-hover); }
+    .card.status-thinking { border-left: 3px solid var(--green); }
+    .card.status-waiting  { border-left: 3px solid var(--yellow); }
+    .card.status-error    { border-left: 3px solid var(--red); }
+    .card.status-idle     { border-left: 3px solid #ff8800; opacity: 0.7; }
+    .card.status-idle-stale { border-left: 3px solid var(--border); opacity: 0.35; }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .card-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.thinking { background: var(--green); animation: pulse 1.5s infinite; }
+    .status-dot.waiting  { background: var(--yellow); animation: pulse 2s infinite; }
+    .status-dot.error    { background: var(--red); }
+    .status-dot.idle     { background: var(--grey); }
+    .status-dot.idle-stale { background: var(--border); }
+
+    .card-status {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .card-status.thinking { color: var(--green); background: rgba(0,255,136,0.1); }
+    .card-status.waiting  { color: var(--yellow); background: rgba(255,204,0,0.1); }
+    .card-status.error    { color: var(--red); background: rgba(255,68,68,0.1); }
+    .card-status.idle     { color: var(--grey); background: rgba(85,85,85,0.1); }
+    .card-status.idle-stale { color: var(--border); background: rgba(30,42,58,0.3); }
+
+    .perm-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+    .perm-badge.bypass { color: var(--red); background: rgba(255,68,68,0.15); }
+    .perm-badge.accept-edits { color: var(--yellow); background: rgba(255,204,0,0.12); }
+
+    /* Subagents */
+    .subagents {
+      margin-bottom: 10px;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+    .subagents-header {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .subagent {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 3px 0;
+    }
+    .subagent-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .subagent-dot.thinking { background: var(--green); animation: pulse 1.5s infinite; }
+    .subagent-dot.idle { background: var(--grey); }
+    .subagent-task {
+      color: var(--text-dim);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .subagent-tokens {
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    .card-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+    .meta-item {
+      display: flex;
+      justify-content: space-between;
+    }
+    .meta-key { color: var(--text-dim); }
+    .meta-val { color: var(--text); font-weight: 500; }
+    .meta-val.cost { color: var(--green); }
+
+    /* Context bar */
+    .context-bar-container {
+      margin-bottom: 12px;
+    }
+    .context-bar-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .context-bar {
+      height: 4px;
+      background: var(--bar-bg);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .context-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s;
+    }
+
+    /* Active files */
+    .active-files {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+    .file-tag {
+      font-size: 11px;
+      padding: 2px 6px;
+      background: var(--bar-bg);
+      border-radius: 3px;
+      color: var(--blue);
+    }
+
+    /* Recent log */
+    .log-toggle {
+      font-size: 11px;
+      color: var(--text-dim);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: inherit;
+      padding: 4px 0;
+    }
+    .log-toggle:hover { color: var(--text); }
+    .log-feed {
+      margin-top: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .log-entry {
+      display: flex;
+      gap: 8px;
+      color: var(--text-dim);
+    }
+    .log-time { color: var(--text-dim); flex-shrink: 0; min-width: 55px; }
+    .log-type { flex-shrink: 0; min-width: 40px; font-weight: 500; }
+    .log-type.tool  { color: var(--blue); }
+    .log-type.think { color: var(--green); }
+    .log-type.user  { color: var(--yellow); }
+    .log-type.error { color: var(--red); }
+    .log-msg {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-dim);
+    }
+    .empty h2 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
+    .empty p { font-size: 13px; }
+
+    /* Git branch */
+    .git-branch {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg-card); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script>
+    const { useState, useEffect, useCallback } = React;
+    const e = React.createElement;
+
+    function formatNumber(n) {
+      if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+      if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+      return String(n);
+    }
+
+    function formatCost(c) {
+      return '$' + c.toFixed(4);
+    }
+
+    function timeAgo(iso) {
+      if (!iso) return '-';
+      const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+      if (s < 5) return 'just now';
+      if (s < 60) return s + 's ago';
+      if (s < 3600) return Math.floor(s / 60) + 'm ago';
+      if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+      return Math.floor(s / 86400) + 'd ago';
+    }
+
+    function formatTime(iso) {
+      if (!iso) return '';
+      return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function contextPercent(lastTurnInputTotal) {
+      // 200K context window
+      return Math.min(100, (lastTurnInputTotal / 200_000) * 100);
+    }
+
+    function contextBarColor(pct) {
+      if (pct > 80) return 'var(--red)';
+      if (pct > 50) return 'var(--yellow)';
+      return 'var(--blue)';
+    }
+
+    function SessionCard({ session }) {
+      const [expanded, setExpanded] = useState(false);
+      const st = session.status;
+      const pct = contextPercent(session.lastTurnInputTotal || session.tokensIn);
+
+      return e('div', { className: 'card status-' + st },
+        // Header
+        e('div', { className: 'card-header' },
+          e('div', null,
+            e('div', { className: 'card-label',
+              style: session.cwd ? { cursor: 'pointer' } : {},
+              onClick: session.cwd ? (ev) => {
+                fetch('/api/open-folder', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ path: session.cwd })
+                }).then(r => {
+                  if (!r.ok) {
+                    const el = ev.currentTarget;
+                    el.style.textDecoration = 'line-through';
+                    el.title = 'Folder not found: ' + session.cwd;
+                  }
+                });
+              } : undefined,
+              title: session.cwd || ''
+            },
+              e('span', { className: 'status-dot ' + st }),
+              session.label || session.sessionId.substring(0, 8)
+            ),
+            session.gitBranch ? e('div', { className: 'git-branch' }, session.gitBranch) : null
+          ),
+          e('div', { style: { display: 'flex', gap: '6px', alignItems: 'center' } },
+            session.permissionMode === 'bypassPermissions'
+              ? e('span', { className: 'perm-badge bypass' }, 'YOLO')
+              : session.permissionMode === 'acceptEdits'
+              ? e('span', { className: 'perm-badge accept-edits' }, 'AUTO-EDIT')
+              : null,
+            e('span', { className: 'card-status ' + st }, st)
+          )
+        ),
+
+        // Meta grid
+        e('div', { className: 'card-meta' },
+          e('div', { className: 'meta-item' },
+            e('span', { className: 'meta-key' }, 'Model'),
+            e('span', { className: 'meta-val' }, session.model || '-')
+          ),
+          e('div', { className: 'meta-item' },
+            e('span', { className: 'meta-key' }, 'Cost'),
+            e('span', { className: 'meta-val cost' }, formatCost(session.costUSD))
+          ),
+          e('div', { className: 'meta-item' },
+            e('span', { className: 'meta-key' }, 'Output'),
+            e('span', { className: 'meta-val' }, formatNumber(session.tokensOut))
+          ),
+          e('div', { className: 'meta-item' },
+            e('span', { className: 'meta-key' }, 'Cache Read'),
+            e('span', { className: 'meta-val' }, formatNumber(session.cacheReadIn || 0))
+          ),
+          e('div', { className: 'meta-item' },
+            e('span', { className: 'meta-key' }, 'Turns'),
+            e('span', { className: 'meta-val' }, session.turnCount)
+          ),
+          e('div', { className: 'meta-item' },
+            e('span', { className: 'meta-key' }, 'Last Event'),
+            e('span', { className: 'meta-val' }, timeAgo(session.lastEventAt))
+          )
+        ),
+
+        // Context bar
+        e('div', { className: 'context-bar-container' },
+          e('div', { className: 'context-bar-label' },
+            e('span', null, 'Context Window'),
+            e('span', null, pct.toFixed(0) + '%')
+          ),
+          e('div', { className: 'context-bar' },
+            e('div', { className: 'context-bar-fill', style: {
+              width: pct + '%',
+              background: contextBarColor(pct)
+            }})
+          )
+        ),
+
+        // Active files
+        session.activeFiles.length > 0
+          ? e('div', { className: 'active-files' },
+              session.activeFiles.map((f, i) => e('span', { key: i, className: 'file-tag' }, f))
+            )
+          : null,
+
+        // Subagents
+        session.subagents && session.subagents.length > 0
+          ? e('div', { className: 'subagents' },
+              e('div', { className: 'subagents-header' }, 'Subagents (' + session.subagents.length + ')'),
+              session.subagents.map((sub, i) =>
+                e('div', { key: i, className: 'subagent' },
+                  e('span', { className: 'subagent-dot ' + sub.status }),
+                  e('span', { className: 'subagent-task' }, sub.task || sub.agentId),
+                  e('span', { className: 'subagent-tokens' }, formatNumber(sub.tokensOut) + ' out')
+                )
+              )
+            )
+          : null,
+
+        // Log toggle + feed
+        e('button', {
+          className: 'log-toggle',
+          onClick: () => setExpanded(!expanded)
+        }, expanded ? '- Hide log' : '+ Show log (' + session.recentLog.length + ')'),
+
+        expanded ? e('div', { className: 'log-feed' },
+          session.recentLog.slice().reverse().map((entry, i) =>
+            e('div', { key: i, className: 'log-entry' },
+              e('span', { className: 'log-time' }, formatTime(entry.time)),
+              e('span', { className: 'log-type ' + entry.type }, entry.type),
+              e('span', { className: 'log-msg' }, entry.msg)
+            )
+          )
+        ) : null
+      );
+    }
+
+    function Dashboard() {
+      const [sessions, setSessions] = useState([]);
+      const [lastFetch, setLastFetch] = useState(null);
+
+      const fetchSessions = useCallback(() => {
+        fetch('/api/sessions')
+          .then(r => r.json())
+          .then(data => {
+            setSessions(data);
+            setLastFetch(new Date());
+          })
+          .catch(() => {}); // silent on error
+      }, []);
+
+      useEffect(() => {
+        fetchSessions();
+        const iv = setInterval(fetchSessions, 2000);
+        return () => clearInterval(iv);
+      }, [fetchSessions]);
+
+      const totalCost = sessions.reduce((s, x) => s + x.costUSD, 0);
+      const totalOut = sessions.reduce((s, x) => s + x.tokensOut, 0);
+      const activeSessions = sessions.filter(s => s.status === 'thinking' || s.status === 'waiting').length;
+
+      return e('div', null,
+        // Header
+        e('div', { className: 'header' },
+          e('div', { className: 'header-title' },
+            e('span', { className: 'dot' }),
+            'Claude Code Dashboard'
+          ),
+          e('div', { className: 'header-stats' },
+            e('span', null,
+              e('span', { className: 'stat-label' }, 'Sessions'),
+              e('span', { className: 'stat-value' }, activeSessions + '/' + sessions.length)
+            ),
+            e('span', null,
+              e('span', { className: 'stat-label' }, 'Output'),
+              e('span', { className: 'stat-value' }, formatNumber(totalOut) + ' out')
+            ),
+            e('span', null,
+              e('span', { className: 'stat-label' }, 'Cost'),
+              e('span', { className: 'stat-value cost' }, formatCost(totalCost))
+            )
+          )
+        ),
+
+        // Cards
+        sessions.length === 0
+          ? e('div', { className: 'empty' },
+              e('h2', null, 'No sessions detected'),
+              e('p', null, 'Start a Claude Code session in any terminal to see it here.')
+            )
+          : e('div', { className: 'grid' },
+              sessions.map(s => e(SessionCard, { key: s.sessionId, session: s }))
+            )
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(e(Dashboard));
+  </script>
+</body>
+</html>
