@@ -330,7 +330,7 @@ app.get('/api/sessions', (req, res) => {
 
 // --- Start ---
 const WATCH_DIR = path.join(os.homedir(), '.claude', 'projects');
-const PORT = 3001;
+const PORT = Number(process.env.PORT) || 3001;
 
 console.log(`Watching: ${WATCH_DIR}`);
 console.log(`Dashboard: http://localhost:${PORT}`);
